@@ -111,7 +111,7 @@ export function createHud(app, world) {
     // --- Mission banner, top-left. Capped so it ends before the compass
     // tape (compass panel starts at x=450); truncate with an ellipsis if
     // an objective ever runs long again.
-    let bannerLabel = (ms.index + 1) + '/4  ' + def.name + '  —  ' + def.objective;
+    let bannerLabel = ms.bannerText || ((ms.index + 1) + '/4  ' + def.name + '  —  ' + def.objective);
     banner.text = bannerLabel;
     while (banner.width > 428 && bannerLabel.length > 12) {
       bannerLabel = bannerLabel.replace(/…$/, '').slice(0, -1) + '…';

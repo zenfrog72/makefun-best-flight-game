@@ -48,6 +48,7 @@ export function createMissionState(world) {
     landed: false,
     message: '',
     messageUntil: 0,
+    bannerText: null, // HUD banner override for staged shots (e.g. landing in daylight)
     score: 0,
     totalScore: 0,
     events: [],
@@ -65,6 +66,7 @@ export function startMission(ms, world, plane, index) {
   ms.dropQuality = null;
   ms.landed = false;
   ms.message = '';
+  ms.bannerText = null;
   ms.score = 0;
   const from = world.islands.find((i) => i.id === def.from);
   const to = world.islands.find((i) => i.id === def.to);

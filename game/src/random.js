@@ -24,7 +24,7 @@ export function readParams() {
   const q = new URLSearchParams(window.location.search);
   const seedRaw = q.get('seed');
   const seed = seedRaw === null ? (Date.now() % 100000) : (parseInt(seedRaw, 10) || hashSeed(seedRaw));
-  return { seed, shot: q.get('shot'), mission: q.get('mission') };
+  return { seed, shot: q.get('shot'), mission: q.get('mission'), view: q.get('view') };
 }
 
 export function pick(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }

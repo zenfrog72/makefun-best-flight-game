@@ -20,9 +20,10 @@ import {
 import { applyShot } from './shots.js';
 
 const params = readParams();
-// Screenshot staging (?shot=cover|ring|landing|storm) renders the chase
-// view from behind the plane; normal play keeps the top-down view.
-const CHASE = !!params.shot;
+// Screenshot staging (?shot=...) renders the chase view from behind the
+// plane, unless &view=top asks for the top-down view (landing + storm
+// shots); normal play keeps the top-down view.
+const CHASE = !!params.shot && params.view !== 'top';
 const rng = mulberry32(params.seed);
 
 const app = new PIXI.Application({

@@ -64,26 +64,31 @@ export function applyShot(game, name) {
     steps = 90;
     targetAlt = 950; targetSpeed = 125;
   } else if (name === 'landing') {
-    // Real final approach to Pulau Badai runway 07 (heading 70). Staged
-    // ~950 out so the chase view ends ~700 out: the strip + island sit
-    // above the plane's nose, gear down, visibly descending (targetAlt
-    // far below start alt saturates pitch to full sink, so vspeed is
-    // still clearly negative when the screenshot is taken). Day light
-    // (mission 4 is night; the landing shot is staged in daylight).
+    // Real final approach to Pulau Badai runway 07 (heading 70), TOP-DOWN
+    // view (&view=top): the plane sits at screen (640, 400) heading up, so
+    // the runway must end ~320 out to fill the top half above the plane.
+    // Staged ~595 out (90 steps at 85 kt cover ~275): strip + island sit
+    // above the plane, gear down, visibly descending (targetAlt far below
+    // start alt saturates pitch to full sink, so vspeed is still clearly
+    // negative when the screenshot is taken). Day light (mission 4 is
+    // night; the landing shot is staged in daylight) — so the banner is
+    // overridden: "4/4 STORM NIGHT" would be wrong in daylight.
     missionIndex = 3;
     const rw = badai.runway;
-    game.resetForMission(3, { x: 4257, y: 3475, heading: 70, altitude: 210, speed: 85, throttle: 0.45, fuel: 46, cargo: 1 });
+    game.resetForMission(3, { x: 4591, y: 3353, heading: 70, altitude: 210, speed: 85, throttle: 0.45, fuel: 46, cargo: 1 });
     game.setPalette('day');
+    ms.bannerText = 'FINAL APPROACH  —  Land at Pulau Badai';
     target = { x: rw.x, y: rw.y };
     steps = 60 * 1.5;
     targetAlt = -400; targetSpeed = 85;
   } else if (name === 'storm') {
-    // Mission 4, night storm, rain + lightning + lit runway ahead.
-    // Staged ~950 out so the chase view ends ~650 out: island + lit
-    // runway in frame above the plane's nose.
+    // Mission 4, night storm, rain + lightning + lit runway ahead, TOP-DOWN
+    // view (&view=top). Staged ~650 out (90 steps at 105 kt cover ~330)
+    // so the lit runway + island end ~320 out, filling the top half above
+    // the plane. Banner stays "4/4 STORM NIGHT" — it really is night here.
     missionIndex = 3;
     const rw = badai.runway;
-    game.resetForMission(3, { x: 4257, y: 3475, heading: 70, altitude: 700, speed: 105, throttle: 0.6, fuel: 58, cargo: 1 });
+    game.resetForMission(3, { x: 4539, y: 3372, heading: 70, altitude: 700, speed: 105, throttle: 0.6, fuel: 58, cargo: 1 });
     target = { x: rw.x, y: rw.y };
     steps = 60 * 1.5;
     targetAlt = 650; targetSpeed = 105;
