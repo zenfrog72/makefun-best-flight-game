@@ -40,13 +40,13 @@ const GAME_MAX_BYTES = 50331648;
 function countGameFiles(dir) {
   let files = 0;
   let bytes = 0;
-  for (const name of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, name);
-    if (name.isDirectory()) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
       const sub = countGameFiles(path);
       files += sub.files;
       bytes += sub.bytes;
-    } else if (name.isFile()) {
+    } else if (entry.isFile()) {
       files += 1;
       bytes += statSync(path).size;
     }
