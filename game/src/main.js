@@ -10,6 +10,7 @@ import { createAudio } from './audio.js';
 import { createPlane, resetPlane, stepFlight, applyDamage } from './flight.js';
 import { buildWorld, islandAt, runwayCheck, windForMission, clampToWorld } from './world.js';
 import { createRenderer } from './render.js';
+import { createChaseRenderer } from './chase.js';
 import { createHud } from './hud.js';
 import {
   MISSION_DEFS, createMissionState, startMission, updateMission,
@@ -19,6 +20,9 @@ import {
 import { applyShot } from './shots.js';
 
 const params = readParams();
+// Screenshot staging (?shot=cover|ring|landing|storm) renders the chase
+// view from behind the plane; normal play keeps the top-down view.
+const CHASE = !!params.shot;
 const rng = mulberry32(params.seed);
 
 const app = new PIXI.Application({
@@ -57,7 +61,9 @@ let campaignDone = false;
 function buildRendererFor(key) {
   if (renderer) app.stage.removeChild(renderer.root);
   paletteKey = key;
-  renderer = createRenderer(app, world, key);
+  // Screenshot staging (?shot=) uses the chase view from behind the plane;
+  // normal play keeps the top-down renderer.
+  renderer = CHASE ? createChaseRenderer(app, world, key) : createRenderer(app, world, key);
   app.stage.removeChild(hud.layer);
   app.stage.addChild(hud.layer);
 }
@@ -390,7 +396,10 @@ function frame(now) {
   while (acc >= STEP && steps < 5) {
     acc -= STEP;
     steps++;
-    if (screen === 'play' && ms.phase === 'flying') {
+    // In shot mode, freeze the sim once the shot is staged: the capture
+    // tool waits ~400 ms after __shotReady, and without the freeze the
+    // plane would keep flying (hundreds of units) before the screenshot.
+    if (screen === 'play' && ms.phase === 'flying' && !window.__shotReady) {
       stepOnce(readControls(), STEP);
     } else if (screen === 'title') {
       attractStep(STEP);

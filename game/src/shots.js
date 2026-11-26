@@ -42,45 +42,48 @@ export function applyShot(game, name) {
 
   if (name === 'cover') {
     // Mission 1, on final leg to Tanjung Api: aligned with runway 11
-    // (heading 110), ~630 units out; autopilot + post-ready drift leave
-    // the runway centre ~200 units ahead — strip + volcano in the top
-    // of the frame, plane still on approach over the sea.
+    // (heading 110). Staged ~950 out so the chase view ends ~690 out:
+    // the whole island + volcano + runway strip sit above the plane's
+    // nose instead of hiding behind it.
     missionIndex = 0;
-    game.resetForMission(0, { x: 4058, y: 735, heading: 110, altitude: 1100, speed: 125, throttle: 0.7, fuel: 82, cargo: 1 });
+    game.resetForMission(0, { x: 3757, y: 625, heading: 110, altitude: 1100, speed: 125, throttle: 0.7, fuel: 82, cargo: 1 });
     target = { x: api.runway.x, y: api.runway.y };
     steps = 60;
     targetAlt = 1100; targetSpeed = 125;
   } else if (name === 'ring') {
-    // Mission 2 at dusk, threading the second ring.
+    // Mission 2 at dusk, flying toward the next ring gate. The chase view
+    // needs the gate dead ahead and prominent, so the shot targets ring 3
+    // directly (rings 1-2 already cleared): start ~1050 out on a 30°
+    // approach, fly 1.5 s, end ~700 short of the gate — gold ring
+    // above the plane's nose instead of centred on it.
     missionIndex = 1;
-    const ring = world.rings[1];
-    game.resetForMission(1, { x: ring.x - 800, y: ring.y + 550, heading: 55, altitude: 950, speed: 125, throttle: 0.7, fuel: 74, cargo: 0 });
-    ms.ringsCleared = 1;
+    const ring = world.rings[2];
+    game.resetForMission(1, { x: 3145, y: 3459, heading: 30, altitude: 950, speed: 125, throttle: 0.7, fuel: 74, cargo: 0 });
+    ms.ringsCleared = 2;
     target = { x: ring.x, y: ring.y };
-    steps = Math.round(60 * 2.9);
+    steps = 90;
     targetAlt = 950; targetSpeed = 125;
   } else if (name === 'landing') {
-    // Real final approach to Pulau Badai runway 07 (heading 70): ~650 units
-    // out, 1.5 s at 85 kt leaves the centre ~250 ahead, i.e. the near
-    // threshold ~0.8 km ahead, alt ~200 ft and visibly descending
-    // (targetAlt far below start alt saturates pitch to full sink, so
-    // vspeed is still clearly negative when the screenshot is taken),
-    // gear down. Day light (mission 4 is night; the landing shot is
-    // staged in daylight).
+    // Real final approach to Pulau Badai runway 07 (heading 70). Staged
+    // ~950 out so the chase view ends ~700 out: the strip + island sit
+    // above the plane's nose, gear down, visibly descending (targetAlt
+    // far below start alt saturates pitch to full sink, so vspeed is
+    // still clearly negative when the screenshot is taken). Day light
+    // (mission 4 is night; the landing shot is staged in daylight).
     missionIndex = 3;
     const rw = badai.runway;
-    game.resetForMission(3, { x: 4539, y: 3372, heading: 70, altitude: 210, speed: 85, throttle: 0.45, fuel: 46, cargo: 1 });
+    game.resetForMission(3, { x: 4257, y: 3475, heading: 70, altitude: 210, speed: 85, throttle: 0.45, fuel: 46, cargo: 1 });
     game.setPalette('day');
     target = { x: rw.x, y: rw.y };
     steps = 60 * 1.5;
     targetAlt = -400; targetSpeed = 85;
   } else if (name === 'storm') {
     // Mission 4, night storm, rain + lightning + lit runway ahead.
-    // ~730 units out, 1.5 s at 105 kt leaves the island centre ~250 ahead
-    // — island + runway lights in frame.
+    // Staged ~950 out so the chase view ends ~650 out: island + lit
+    // runway in frame above the plane's nose.
     missionIndex = 3;
     const rw = badai.runway;
-    game.resetForMission(3, { x: 4464, y: 3400, heading: 70, altitude: 700, speed: 105, throttle: 0.6, fuel: 58, cargo: 1 });
+    game.resetForMission(3, { x: 4257, y: 3475, heading: 70, altitude: 700, speed: 105, throttle: 0.6, fuel: 58, cargo: 1 });
     target = { x: rw.x, y: rw.y };
     steps = 60 * 1.5;
     targetAlt = 650; targetSpeed = 105;
@@ -94,7 +97,7 @@ export function applyShot(game, name) {
     game.stepOnce(ctrl, STEP);
   }
   // The staged flight may have cleared the ring mid-flight; pin the shot state.
-  if (name === 'ring') { ms.ringsCleared = 1; ms.score = 0; }
+  if (name === 'ring') { ms.ringsCleared = 2; ms.score = 0; }
   ms.phase = 'flying';
   game.setScreen('play');
   game.shotReadyAfter = 2; // render twice, then flag ready
