@@ -19,6 +19,25 @@ export function createHud(app, world) {
   const compassG = new PIXI.Graphics();
   layer.addChild(compassG);
 
+  // Compass tick labels, pooled once: at most 5 major ticks (every 30°)
+  // are visible in the ±60° tape, so 9 pooled labels give ample headroom.
+  // Reused every frame — never re-created, never removed.
+  const compassLabels = [];
+  for (let i = 0; i < 9; i++) {
+    const t = new PIXI.Text('', { fontFamily: 'Arial, sans-serif', fontSize: 12, fontWeight: 'bold', fill: 0xffffff });
+    t.anchor.set(0.5, 0);
+    t.position.set(0, 12);
+    t.visible = false;
+    compassG.addChild(t);
+    compassLabels.push(t);
+  }
+
+  // Current heading readout, created once; only .text changes per frame.
+  const hdgText = new PIXI.Text('', { fontFamily: 'Arial, sans-serif', fontSize: 13, fontWeight: 'bold', fill: 0xffc93d });
+  hdgText.anchor.set(0.5, 0);
+  hdgText.position.set(VIEW_W / 2, 48);
+  compassG.addChild(hdgText);
+
   const status = new PIXI.Text('', { fontFamily: 'Arial, sans-serif', fontSize: 19, fontWeight: 'bold', fill: 0xffffff, align: 'right' });
   status.position.set(VIEW_W - 16, 12);
   status.anchor.set(1, 0);
@@ -55,6 +74,12 @@ export function createHud(app, world) {
 
   const throttleG = new PIXI.Graphics();
   layer.addChild(throttleG);
+
+  // Throttle/gear/cargo label, created once; only .text changes per frame.
+  const thrLabel = new PIXI.Text('', { fontFamily: 'Arial, sans-serif', fontSize: 13, fontWeight: 'bold', fill: 0xffffff });
+  thrLabel.anchor.set(0.5, 0.5);
+  thrLabel.position.set(VIEW_W / 2, VIEW_H - 23);
+  throttleG.addChild(thrLabel);
 
   const msgText = new PIXI.Text('', { fontFamily: 'Arial, sans-serif', fontSize: 30, fontWeight: 'bold', fill: 0xffe9a8, align: 'center' });
   msgText.anchor.set(0.5, 0.5);
@@ -98,9 +123,9 @@ export function createHud(app, world) {
 
     // --- Compass tape, top-centre.
     compassG.clear();
-    compassG.removeChildren();
     panel(compassG, VIEW_W / 2 - 190, 8, 380, 44);
     const cx = VIEW_W / 2;
+    let li = 0;
     for (let d = -60; d <= 60; d += 5) {
       const hdg = Math.round((plane.heading + d) / 5) * 5;
       const off = (wrapAngleDeg(hdg - plane.heading) / 60) * 175;
@@ -111,20 +136,18 @@ export function createHud(app, world) {
       compassG.lineTo(x, major ? 28 : 36);
       if (major) {
         const label = hdg % 90 === 0 ? ['N', 'E', 'S', 'W'][Math.round(((hdg % 360) + 360) % 360 / 90)] : String(((hdg % 360) + 360) % 360);
-        const t = new PIXI.Text(label, { fontFamily: 'Arial, sans-serif', fontSize: 12, fontWeight: 'bold', fill: 0xffffff });
-        t.anchor.set(0.5, 0);
-        t.position.set(x, 12);
-        compassG.addChild(t);
+        const t = compassLabels[li++];
+        t.text = label;
+        t.position.x = x;
+        t.visible = true;
       }
     }
+    for (; li < compassLabels.length; li++) compassLabels[li].visible = false;
     // Centre caret + current heading readout.
     compassG.beginFill(0xffc93d);
     compassG.drawPolygon([cx - 7, 8, cx + 7, 8, cx, 18]);
     compassG.endFill();
-    const hdgText = new PIXI.Text(Math.round(((plane.heading % 360) + 360) % 360) + '° ' + headingToCompass(plane.heading), { fontFamily: 'Arial, sans-serif', fontSize: 13, fontWeight: 'bold', fill: 0xffc93d });
-    hdgText.anchor.set(0.5, 0);
-    hdgText.position.set(cx, 48);
-    compassG.addChild(hdgText);
+    hdgText.text = Math.round(((plane.heading % 360) + 360) % 360) + '° ' + headingToCompass(plane.heading);
 
     // --- Status block, top-right: timer, score, fuel, damage.
     const mm = Math.floor(Math.max(0, ms.timeLeft) / 60);
@@ -205,15 +228,11 @@ export function createHud(app, world) {
 
     // --- Throttle bar + gear/flaps, bottom-centre.
     throttleG.clear();
-    throttleG.removeChildren();
     panel(throttleG, VIEW_W / 2 - 130, VIEW_H - 34, 260, 22);
     throttleG.beginFill(0xffc93d);
     throttleG.drawRoundedRect(VIEW_W / 2 - 128, VIEW_H - 32, 256 * clamp(plane.throttle, 0, 1), 18, 5);
     throttleG.endFill();
-    const thrLabel = new PIXI.Text('THR ' + Math.round(plane.throttle * 100) + '%   GEAR ' + (plane.gearDown ? 'DOWN' : 'UP') + '   CARGO ' + plane.cargo, { fontFamily: 'Arial, sans-serif', fontSize: 13, fontWeight: 'bold', fill: 0xffffff });
-    thrLabel.anchor.set(0.5, 0.5);
-    thrLabel.position.set(VIEW_W / 2, VIEW_H - 23);
-    throttleG.addChild(thrLabel);
+    thrLabel.text = 'THR ' + Math.round(plane.throttle * 100) + '%   GEAR ' + (plane.gearDown ? 'DOWN' : 'UP') + '   CARGO ' + plane.cargo;
 
     // --- Centre message + warnings.
     msgText.text = time < ms.messageUntil ? ms.message : '';

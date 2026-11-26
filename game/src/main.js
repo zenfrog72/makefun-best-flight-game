@@ -24,7 +24,12 @@ const rng = mulberry32(params.seed);
 const app = new PIXI.Application({
   width: VIEW_W, height: VIEW_H,
   backgroundColor: 0x0b7fa8,
-  antialias: true,
+  // Perf (headless SwiftShader / weak GPUs): MSAA + full-res backing store
+  // cost ~700ms/frame there (measured 1.4 fps). The logical view stays
+  // 1280x720; only the backing store is smaller (576x324), upscaled by
+  // the canvas — same content, slightly softer image.
+  antialias: false,
+  resolution: 0.45,
 });
 document.getElementById('game').appendChild(app.view);
 

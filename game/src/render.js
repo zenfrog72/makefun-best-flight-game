@@ -5,7 +5,7 @@
 // drawn with PIXI.Graphics so the whole scene is code, no image files.
 
 import { VIEW_W, VIEW_H, WORLD_W, WORLD_H, PLANE_SCREEN_X, PLANE_SCREEN_Y, PALETTES } from './config.js';
-import { clamp, degToRad, lerp } from './random.js';
+import { clamp, degToRad, lerp, dist } from './random.js';
 
 function makeGradientTexture(palette, night) {
   const c = document.createElement('canvas');
@@ -16,19 +16,12 @@ function makeGradientTexture(palette, night) {
   grad.addColorStop(1, '#' + palette.seaB.toString(16).padStart(6, '0'));
   g.fillStyle = grad;
   g.fillRect(0, 0, 4, 512);
-  return PIXI.Texture.from(c);
-}
-
-function makeSkyTexture(palette) {
-  const c = document.createElement('canvas');
-  c.width = 4; c.height = 512;
-  const g = c.getContext('2d');
-  const grad = g.createLinearGradient(0, 0, 0, 512);
-  grad.addColorStop(0, '#' + palette.skyTop.toString(16).padStart(6, '0'));
-  grad.addColorStop(1, '#' + palette.skyBot.toString(16).padStart(6, '0'));
-  g.fillStyle = grad;
-  g.fillRect(0, 0, 4, 512);
-  return PIXI.Texture.from(c);
+  // The gradient is vertical-only (every column identical) with 512 steps
+  // for a ≤720px span, so nearest sampling is visually identical to
+  // bilinear here and cheaper per fragment in software GL.
+  const tex = PIXI.Texture.from(c);
+  tex.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
+  return tex;
 }
 
 export function createRenderer(app, world, paletteKey) {
@@ -40,9 +33,12 @@ export function createRenderer(app, world, paletteKey) {
   app.stage.addChild(root);
 
   // Sky wash behind everything (screen space).
-  const sky = new PIXI.Sprite(makeSkyTexture(palette));
-  sky.width = VIEW_W; sky.height = VIEW_H;
-  root.addChild(sky);
+  // REMOVED (perf): the opaque sea sprite always covers the whole viewport
+  // — the plane is clamped inside the world and the sea rect extends 1200
+  // units past every world edge — so the sky quad was never visible; it
+  // only cost a full-screen blend pass in software GL. The canvas clear
+  // colour (0x0b7fa8) is behind the sea in any case.
+  // (Was: new PIXI.Sprite(makeSkyTexture(palette)), 1280x720, added first.)
 
   // World container: rotated -heading each frame, translated so the plane
   // sits at (640, 400).
@@ -57,6 +53,13 @@ export function createRenderer(app, world, paletteKey) {
 
   const scenery = new PIXI.Graphics();
   worldLayer.addChild(scenery);
+
+  // Per-island graphics (culled per frame; see render()). Reefs stay in
+  // the shared `scenery` layer; islands get their own Graphics so only
+  // the 1-2 islands near the viewport are rasterised each frame.
+  const islandLayer = new PIXI.Container();
+  worldLayer.addChild(islandLayer);
+  const sceneryParts = []; // { g, x, y, r } — r includes runway/town margin
 
   const ringLayer = new PIXI.Graphics();
   worldLayer.addChild(ringLayer);
@@ -73,6 +76,7 @@ export function createRenderer(app, world, paletteKey) {
   flash.beginFill(0xffffff, 0);
   flash.drawRect(0, 0, VIEW_W, VIEW_H);
   flash.endFill();
+  flash.visible = false; // only shown while a lightning flash is decaying
   root.addChild(flash);
 
   // Plane shadow (world space, under the plane's screen spot).
@@ -102,98 +106,102 @@ export function createRenderer(app, world, paletteKey) {
       scenery.endFill();
     }
     for (const isl of world.islands) {
+      // One Graphics per island so render() can cull off-screen islands.
+      const g = new PIXI.Graphics();
+      islandLayer.addChild(g);
+      sceneryParts.push({ g, x: isl.x, y: isl.y, r: isl.r + 300 });
       // Beach ring, then grass, then detail.
-      scenery.beginFill(palette.sand);
-      scenery.drawEllipse(isl.x, isl.y, isl.r, isl.r * 0.82);
-      scenery.endFill();
-      scenery.beginFill(isl.color);
-      scenery.drawEllipse(isl.x, isl.y, isl.r * 0.86, isl.r * 0.7);
-      scenery.endFill();
+      g.beginFill(palette.sand);
+      g.drawEllipse(isl.x, isl.y, isl.r, isl.r * 0.82);
+      g.endFill();
+      g.beginFill(isl.color);
+      g.drawEllipse(isl.x, isl.y, isl.r * 0.86, isl.r * 0.7);
+      g.endFill();
       // Palm clusters: little green starbursts with brown trunks.
       for (let p = 0; p < 14; p++) {
         const a = (p / 14) * Math.PI * 2 + isl.x * 0.001;
         const px = isl.x + Math.cos(a) * isl.r * 0.62;
         const py = isl.y + Math.sin(a) * isl.r * 0.5;
-        scenery.lineStyle(2, 0x6b4a2a);
-        scenery.moveTo(px, py); scenery.lineTo(px + 3, py - 10);
-        scenery.lineStyle(0);
-        scenery.beginFill(0x2f8a3e);
+        g.lineStyle(2, 0x6b4a2a);
+        g.moveTo(px, py); g.lineTo(px + 3, py - 10);
+        g.lineStyle(0);
+        g.beginFill(0x2f8a3e);
         for (let f = 0; f < 5; f++) {
           const fa = (f / 5) * Math.PI * 2;
-          scenery.drawEllipse(px + 3 + Math.cos(fa) * 7, py - 10 + Math.sin(fa) * 5, 7, 3);
+          g.drawEllipse(px + 3 + Math.cos(fa) * 7, py - 10 + Math.sin(fa) * 5, 7, 3);
         }
-        scenery.endFill();
+        g.endFill();
       }
       if (isl.kind === 'volcano') {
         // Smoking cone.
-        scenery.beginFill(0x5a4a3a);
-        scenery.moveTo(isl.x - 150, isl.y + 90);
-        scenery.lineTo(isl.x, isl.y - 190);
-        scenery.lineTo(isl.x + 150, isl.y + 90);
-        scenery.closePath();
-        scenery.endFill();
-        scenery.beginFill(0x8a5a3a);
-        scenery.moveTo(isl.x - 60, isl.y - 60);
-        scenery.lineTo(isl.x, isl.y - 190);
-        scenery.lineTo(isl.x + 60, isl.y - 60);
-        scenery.closePath();
-        scenery.endFill();
-        scenery.beginFill(0xdddddd, 0.8);
-        scenery.drawEllipse(isl.x + 40, isl.y - 210, 46, 16);
-        scenery.drawEllipse(isl.x + 90, isl.y - 235, 34, 12);
-        scenery.endFill();
-        scenery.beginFill(0xff7722, 0.9);
-        scenery.drawEllipse(isl.x, isl.y - 178, 18, 8);
-        scenery.endFill();
+        g.beginFill(0x5a4a3a);
+        g.moveTo(isl.x - 150, isl.y + 90);
+        g.lineTo(isl.x, isl.y - 190);
+        g.lineTo(isl.x + 150, isl.y + 90);
+        g.closePath();
+        g.endFill();
+        g.beginFill(0x8a5a3a);
+        g.moveTo(isl.x - 60, isl.y - 60);
+        g.lineTo(isl.x, isl.y - 190);
+        g.lineTo(isl.x + 60, isl.y - 60);
+        g.closePath();
+        g.endFill();
+        g.beginFill(0xdddddd, 0.8);
+        g.drawEllipse(isl.x + 40, isl.y - 210, 46, 16);
+        g.drawEllipse(isl.x + 90, isl.y - 235, 34, 12);
+        g.endFill();
+        g.beginFill(0xff7722, 0.9);
+        g.drawEllipse(isl.x, isl.y - 178, 18, 8);
+        g.endFill();
       }
       if (isl.town) {
         // Little town: rows of roofs along the beach.
         for (let b = 0; b < 9; b++) {
           const bx = isl.x - 200 + b * 46;
           const by = isl.y + isl.r * 0.42 - (b % 3) * 26;
-          scenery.beginFill([0xd94f3d, 0xe8a33d, 0x3d7ad9, 0xe8e0c8][b % 4]);
-          scenery.drawRect(bx, by, 30, 20);
-          scenery.endFill();
-          scenery.beginFill(0x8a4a2a);
-          scenery.moveTo(bx - 2, by);
-          scenery.lineTo(bx + 15, by - 12);
-          scenery.lineTo(bx + 32, by);
-          scenery.closePath();
-          scenery.endFill();
+          g.beginFill([0xd94f3d, 0xe8a33d, 0x3d7ad9, 0xe8e0c8][b % 4]);
+          g.drawRect(bx, by, 30, 20);
+          g.endFill();
+          g.beginFill(0x8a4a2a);
+          g.moveTo(bx - 2, by);
+          g.lineTo(bx + 15, by - 12);
+          g.lineTo(bx + 32, by);
+          g.closePath();
+          g.endFill();
         }
       }
       if (isl.hangar && isl.runway) {
         const hx = isl.runway.x + 190;
         const hy = isl.runway.y + 120;
-        scenery.beginFill(0x9aa4ae);
-        scenery.drawRoundedRect(hx - 55, hy - 32, 110, 64, 8);
-        scenery.endFill();
-        scenery.beginFill(0x5a646e);
-        scenery.drawRect(hx - 55, hy + 8, 110, 24);
-        scenery.endFill();
-        scenery.beginFill(0x333333);
-        scenery.drawRect(hx - 30, hy + 8, 60, 24);
-        scenery.endFill();
+        g.beginFill(0x9aa4ae);
+        g.drawRoundedRect(hx - 55, hy - 32, 110, 64, 8);
+        g.endFill();
+        g.beginFill(0x5a646e);
+        g.drawRect(hx - 55, hy + 8, 110, 24);
+        g.endFill();
+        g.beginFill(0x333333);
+        g.drawRect(hx - 30, hy + 8, 60, 24);
+        g.endFill();
         // Parked fuel truck + jeep.
-        scenery.beginFill(0xe8c33d);
-        scenery.drawRoundedRect(hx - 120, hy + 40, 34, 14, 4);
-        scenery.endFill();
-        scenery.beginFill(0x3d7a4a);
-        scenery.drawRoundedRect(hx + 70, hy + 44, 26, 12, 4);
-        scenery.endFill();
+        g.beginFill(0xe8c33d);
+        g.drawRoundedRect(hx - 120, hy + 40, 34, 14, 4);
+        g.endFill();
+        g.beginFill(0x3d7a4a);
+        g.drawRoundedRect(hx + 70, hy + 44, 26, 12, 4);
+        g.endFill();
       }
-      if (isl.runway) drawRunway(scenery, isl.runway, isNight);
+      if (isl.runway) drawRunway(g, isl.runway, isNight);
       if (isl.dropZone) {
-        scenery.lineStyle(4, 0xff3344, 0.95);
-        scenery.drawCircle(isl.dropZone.x, isl.dropZone.y, isl.dropZone.r);
-        scenery.lineStyle(2, 0xffffff, 0.8);
-        scenery.drawCircle(isl.dropZone.x, isl.dropZone.y, isl.dropZone.r * 0.6);
-        scenery.beginFill(0xff3344, 0.9);
-        scenery.drawCircle(isl.dropZone.x, isl.dropZone.y, 10);
-        scenery.endFill();
+        g.lineStyle(4, 0xff3344, 0.95);
+        g.drawCircle(isl.dropZone.x, isl.dropZone.y, isl.dropZone.r);
+        g.lineStyle(2, 0xffffff, 0.8);
+        g.drawCircle(isl.dropZone.x, isl.dropZone.y, isl.dropZone.r * 0.6);
+        g.beginFill(0xff3344, 0.9);
+        g.drawCircle(isl.dropZone.x, isl.dropZone.y, 10);
+        g.endFill();
       }
       // Island name label.
-      scenery.lineStyle(0);
+      g.lineStyle(0);
     }
   }
 
@@ -392,6 +400,17 @@ export function createRenderer(app, world, paletteKey) {
       shadow.drawEllipse(plane.x + shOff * 0.8, plane.y + shOff, 26 * shScale, 11 * shScale);
       shadow.endFill();
 
+      // Cull off-screen islands / clouds / rings: only rasterise what can
+      // be seen from the plane (viewport half-diagonal ~755 + margin).
+      // Toggling .visible skips the draw entirely; geometry stays cached.
+      for (const part of sceneryParts) {
+        part.g.visible = dist(plane.x, plane.y, part.x, part.y) < 800 + part.r;
+      }
+      for (const { g, cl } of cloudSprites) {
+        g.visible = dist(plane.x, plane.y, cl.x, cl.y) < 800 + cl.s;
+      }
+      ringLayer.visible = dist(plane.x, plane.y, 3150, 2550) < 800 + 700;
+
       // Clouds drift.
       for (const { g, cl } of cloudSprites) {
         cl.x += cl.speed * 0.016;
@@ -401,7 +420,7 @@ export function createRenderer(app, world, paletteKey) {
       }
 
       drawPlane(plane, time);
-      drawRings(ms);
+      if (ringLayer.visible) drawRings(ms);
 
       // Rain in screen space.
       rainLayer.clear();
@@ -416,13 +435,18 @@ export function createRenderer(app, world, paletteKey) {
         }
       }
 
-      // Lightning flash decays.
+      // Lightning flash decays. Skip the full-screen quad entirely while
+      // its level is 0 (it is fully transparent then, so nothing changes
+      // visually) — a needless full-screen blend pass in software GL.
       flashLevel = Math.max(0, flashLevel - 0.05);
       if (lightning) flashLevel = 0.85;
-      flash.clear();
-      flash.beginFill(0xffffff, flashLevel * 0.5);
-      flash.drawRect(0, 0, VIEW_W, VIEW_H);
-      flash.endFill();
+      flash.visible = flashLevel > 0;
+      if (flash.visible) {
+        flash.clear();
+        flash.beginFill(0xffffff, flashLevel * 0.5);
+        flash.drawRect(0, 0, VIEW_W, VIEW_H);
+        flash.endFill();
+      }
 
       // Particles (smoke / splash / crate) in screen space near the plane.
       fxLayer.clear();
