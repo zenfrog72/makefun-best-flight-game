@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Island Courier — Pilot Kurir Antar-Pulau</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #06283d; height: 100%; overflow: hidden;
+    font-family: Arial, Helvetica, sans-serif; }
+  #wrap { position: relative; width: 1280px; height: 720px; margin: 0 auto; }
+  #game canvas { display: block; width: 1280px; height: 720px; }
+  #overlay { position: absolute; inset: 0; display: none; z-index: 10; }
+  #overlay .panel {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 640px; max-width: 90%;
+    background: rgba(6, 32, 56, 0.92); color: #f2f7ff;
+    border: 2px solid #ffc93d; border-radius: 14px; padding: 26px 30px;
+    text-align: center; box-shadow: 0 12px 48px rgba(0,0,0,0.55);
+  }
+  #overlay h1 { margin: 0 0 4px; font-size: 52px; letter-spacing: 3px; color: #ffc93d;
+    text-shadow: 0 3px 0 #a33d12; }
+  #overlay h2 { margin: 0 0 10px; font-size: 30px; color: #ffc93d; letter-spacing: 1px; }
+  #overlay .sub { font-size: 16px; color: #bfe3ff; margin-bottom: 16px; }
+  #overlay .mission-row { text-align: left; font-size: 15px; padding: 6px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.14); }
+  #overlay .dim { color: #8fb8d8; }
+  #overlay .small { font-size: 12px; margin-top: 10px; }
+  #overlay .controls { font-size: 14px; line-height: 1.7; color: #d8ecff; margin: 14px 0; }
+  #overlay .brief { font-size: 16px; line-height: 1.6; text-align: left; margin: 10px 0; }
+  #overlay .best { font-size: 16px; color: #7dff9a; font-weight: bold; margin: 8px 0; }
+  #overlay .big-score { font-size: 26px; font-weight: bold; color: #7dff9a; margin: 10px 0; }
+  #overlay button {
+    background: #ffc93d; color: #1a2a00; border: none; border-radius: 9px;
+    font-size: 19px; font-weight: bold; padding: 13px 30px; margin: 8px 6px 0;
+    cursor: pointer; letter-spacing: 1px;
+  }
+  #overlay button:hover { background: #ffd95e; }
+  #overlay button.ghost { background: transparent; color: #d8ecff;
+    border: 2px solid #7fa8c8; font-size: 15px; padding: 10px 20px; }
+  #overlay button.ghost:hover { border-color: #fff; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="game"></div>
+  <div id="overlay"></div>
+</div>
+<script src="vendor/pixi.min.js"></script>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
