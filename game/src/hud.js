@@ -12,7 +12,7 @@ export function createHud(app, world) {
   const layer = new PIXI.Container();
   app.stage.addChild(layer);
 
-  const banner = new PIXI.Text('', { fontFamily: 'Arial, sans-serif', fontSize: 20, fontWeight: 'bold', fill: 0xffffff });
+  const banner = new PIXI.Text('', { fontFamily: 'Arial, sans-serif', fontSize: 19, fontWeight: 'bold', fill: 0xffffff });
   const bannerBg = new PIXI.Graphics();
   layer.addChild(bannerBg, banner);
 
@@ -44,6 +44,8 @@ export function createHud(app, world) {
   const mapG = new PIXI.Graphics();
   layer.addChild(mapBg, mapG);
 
+  const targetBg = new PIXI.Graphics();
+  layer.addChild(targetBg);
   const targetText = new PIXI.Text('', { fontFamily: 'Arial, sans-serif', fontSize: 20, fontWeight: 'bold', fill: 0xffe9a8, align: 'center' });
   targetText.anchor.set(0.5, 0);
   targetText.position.set(VIEW_W / 2, 66);
@@ -81,9 +83,15 @@ export function createHud(app, world) {
     const bearing = wrapAngleDeg((Math.atan2(target.x - plane.x, -(target.y - plane.y)) * 180) / Math.PI);
     const relBearing = wrapAngleDeg(bearing - plane.heading);
 
-    // --- Mission banner, top-left.
-    const bannerLabel = (ms.index + 1) + '/4  ' + def.name + '  —  ' + def.objective;
+    // --- Mission banner, top-left. Capped so it ends before the compass
+    // tape (compass panel starts at x=450); truncate with an ellipsis if
+    // an objective ever runs long again.
+    let bannerLabel = (ms.index + 1) + '/4  ' + def.name + '  —  ' + def.objective;
     banner.text = bannerLabel;
+    while (banner.width > 428 && bannerLabel.length > 12) {
+      bannerLabel = bannerLabel.replace(/…$/, '').slice(0, -1) + '…';
+      banner.text = bannerLabel;
+    }
     banner.position.set(16, 12);
     bannerBg.clear();
     panel(bannerBg, 10, 8, banner.width + 22, 34);
@@ -178,7 +186,10 @@ export function createHud(app, world) {
     mapG.endFill();
 
     // --- Target distance + off-screen arrow, top-centre under compass.
+    // Dark pill behind the label so it reads over sand, sea or grass alike.
     targetText.text = target.label + '  •  ' + (tDist / 100).toFixed(1) + ' km';
+    targetBg.clear();
+    panel(targetBg, VIEW_W / 2 - (targetText.width + 24) / 2, 62, targetText.width + 24, 30, 0.65);
     arrowG.clear();
     const arrowR = 74;
     const ar = degToRad(relBearing);

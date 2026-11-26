@@ -281,8 +281,10 @@ function stepOnce(ctrl, dt) {
   }
 
   // --- Storm lightning (mission 4): random flashes + thunder.
+  // Follows the active palette, not the mission: the landing shot stages
+  // mission 4 in daylight, so it must stay dry and flash-free.
   lightningFlash = false;
-  if (MISSION_DEFS[ms.index].time === 'night' && screen === 'play') {
+  if (paletteKey === 'night' && screen === 'play') {
     lightningTimer -= dt;
     if (lightningTimer <= 0) {
       lightningTimer = 5 + rng() * 9;
@@ -292,7 +294,7 @@ function stepOnce(ctrl, dt) {
   }
 
   // --- Audio follows the engine.
-  const raining = MISSION_DEFS[ms.index].time === 'night';
+  const raining = paletteKey === 'night';
   audio.update(plane.throttle, plane.speed, !plane.onGround, raining && screen === 'play');
 }
 
@@ -330,7 +332,6 @@ const game = {
     buildRendererFor(def.time);
     startMission(ms, world, plane, index);
     resetPlane(plane, opts.x, opts.y, opts.heading, opts);
-    plane.gearDown = true;
     ms.phase = 'flying';
     screen = 'play';
     hideOverlay();
@@ -366,9 +367,18 @@ function frame(now) {
   if (input.wasPressed('KeyR') && (screen === 'play' || screen === 'paused' || screen === 'failed' || screen === 'gameover')) {
     beginMission(ms.index);
   }
-  if (input.wasPressed('Space') && screen === 'title') {
-    audio.ensure();
-    beginMission(0);
+  // Space / Enter: title -> briefing, briefing -> play (FLY). One screen
+  // per press — the else-if keeps a single press from skipping briefing.
+  if (input.wasPressed('Space') || input.wasPressed('Enter')) {
+    if (screen === 'title') {
+      audio.ensure();
+      beginMission(0);
+    } else if (screen === 'briefing') {
+      audio.ensure();
+      screen = 'play';
+      ms.phase = 'flying';
+      hideOverlay();
+    }
   }
 
   let steps = 0;
@@ -385,7 +395,7 @@ function frame(now) {
   if (steps === 5) acc = 0;
 
   // Render.
-  const raining = MISSION_DEFS[ms.index].time === 'night' && screen === 'play';
+  const raining = paletteKey === 'night' && screen === 'play';
   renderer.render({ plane, ms, time, raining, lightning: lightningFlash });
   if (screen === 'play' || screen === 'paused' || screen === 'title') {
     hud.draw({ plane, ms, time, screen });

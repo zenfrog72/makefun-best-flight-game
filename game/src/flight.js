@@ -41,7 +41,7 @@ export function resetPlane(plane, x, y, heading, opts) {
   plane.fuel = o.fuel !== undefined ? o.fuel : FUEL_MAX;
   plane.damage = o.damage || 0;
   plane.cargo = o.cargo || 0;
-  plane.gearDown = true;
+  plane.gearDown = (o.altitude || 0) < 500;
   plane.flaps = 0;
   plane.onGround = (plane.altitude <= 0);
   plane.stalled = false;
@@ -106,6 +106,8 @@ export function stepFlight(plane, ctrl, wind, dt, rng) {
   } else {
     plane.onGround = false;
   }
+  // Gear: down only low (final approach / on the ground), up in cruise.
+  plane.gearDown = plane.altitude < 500;
   if (wasAirborne && plane.onGround && plane.altitude === 0) {
     // touchdown handled by the caller (runway / land / sea checks)
   }

@@ -253,14 +253,16 @@ export function createRenderer(app, world, paletteKey) {
     g.endFill();
   }
 
-  // Clouds: soft white blob clusters.
+  // Clouds: soft stacked puffs, smaller and fainter than before so they
+  // read as clouds instead of big flat white pills over the plane.
   const cloudSprites = [];
   for (const cl of world.clouds) {
     const g = new PIXI.Graphics();
-    g.beginFill(0xffffff, cl.layer === 2 ? 0.85 : 0.55);
-    g.drawEllipse(0, 0, cl.s, cl.s * 0.42);
-    g.drawEllipse(-cl.s * 0.45, 6, cl.s * 0.6, cl.s * 0.32);
-    g.drawEllipse(cl.s * 0.45, 6, cl.s * 0.6, cl.s * 0.32);
+    g.beginFill(0xffffff, cl.layer === 2 ? 0.38 : 0.26);
+    const puffs = [[-0.55, 5, 0.40], [-0.30, -5, 0.48], [0, -9, 0.54], [0.30, -4, 0.46], [0.55, 5, 0.38]];
+    for (const [dx, dy, r] of puffs) {
+      g.drawEllipse(dx * cl.s, dy, cl.s * r, cl.s * r * 0.55);
+    }
     g.endFill();
     g.position.set(cl.x, cl.y);
     cloudLayer.addChild(g);
@@ -382,12 +384,12 @@ export function createRenderer(app, world, paletteKey) {
       const ry = plane.x * sin + plane.y * cos;
       worldLayer.position.set(PLANE_SCREEN_X - rx, PLANE_SCREEN_Y - ry);
 
-      // Shadow: grows and drifts with altitude, always under the plane.
+      // Shadow: small, faint, clearly offset down-right of the plane.
       shadow.clear();
-      const shScale = 1 + plane.altitude / 2500;
-      const shOff = clamp(plane.altitude / 60, 0, 90);
-      shadow.beginFill(0x000000, clamp(0.34 - plane.altitude / 30000, 0.06, 0.34));
-      shadow.drawEllipse(plane.x + shOff * 0.6, plane.y + shOff, 34 * shScale, 14 * shScale);
+      const shScale = 1 + plane.altitude / 6000;
+      const shOff = clamp(plane.altitude / 45, 8, 60);
+      shadow.beginFill(0x000000, clamp(0.22 - plane.altitude / 60000, 0.04, 0.22));
+      shadow.drawEllipse(plane.x + shOff * 0.8, plane.y + shOff, 26 * shScale, 11 * shScale);
       shadow.endFill();
 
       // Clouds drift.

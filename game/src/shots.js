@@ -41,12 +41,15 @@ export function applyShot(game, name) {
   let targetSpeed = 120;
 
   if (name === 'cover') {
-    // Mission 1 mid-flight, banking over the islands, runway ahead.
+    // Mission 1, on final leg to Tanjung Api: aligned with runway 11
+    // (heading 110), ~630 units out; autopilot + post-ready drift leave
+    // the runway centre ~200 units ahead — strip + volcano in the top
+    // of the frame, plane still on approach over the sea.
     missionIndex = 0;
-    game.resetForMission(0, { x: 2600, y: 2100, heading: 55, altitude: 1400, speed: 130, throttle: 0.7, fuel: 82, cargo: 1 });
+    game.resetForMission(0, { x: 4058, y: 735, heading: 110, altitude: 1100, speed: 125, throttle: 0.7, fuel: 82, cargo: 1 });
     target = { x: api.runway.x, y: api.runway.y };
-    steps = 60 * 6;
-    targetAlt = 1400; targetSpeed = 130;
+    steps = 60;
+    targetAlt = 1100; targetSpeed = 125;
   } else if (name === 'ring') {
     // Mission 2 at dusk, threading the second ring.
     missionIndex = 1;
@@ -57,23 +60,30 @@ export function applyShot(game, name) {
     steps = Math.round(60 * 2.9);
     targetAlt = 950; targetSpeed = 125;
   } else if (name === 'landing') {
-    // Final approach to the short runway on Pulau Badai, gear down, windsock.
-    // Day light (mission 4 is night; the landing shot is staged in daylight).
+    // Real final approach to Pulau Badai runway 07 (heading 70): ~650 units
+    // out, 1.5 s at 85 kt leaves the centre ~250 ahead, i.e. the near
+    // threshold ~0.8 km ahead, alt ~200 ft and visibly descending
+    // (targetAlt far below start alt saturates pitch to full sink, so
+    // vspeed is still clearly negative when the screenshot is taken),
+    // gear down. Day light (mission 4 is night; the landing shot is
+    // staged in daylight).
     missionIndex = 3;
     const rw = badai.runway;
-    game.resetForMission(3, { x: rw.x - 1500, y: rw.y + 900, heading: 70, altitude: 320, speed: 88, throttle: 0.45, fuel: 46, cargo: 1 });
+    game.resetForMission(3, { x: 4539, y: 3372, heading: 70, altitude: 210, speed: 85, throttle: 0.45, fuel: 46, cargo: 1 });
     game.setPalette('day');
     target = { x: rw.x, y: rw.y };
-    steps = 60 * 5;
-    targetAlt = 160; targetSpeed = 85;
+    steps = 60 * 1.5;
+    targetAlt = -400; targetSpeed = 85;
   } else if (name === 'storm') {
     // Mission 4, night storm, rain + lightning + lit runway ahead.
+    // ~730 units out, 1.5 s at 105 kt leaves the island centre ~250 ahead
+    // — island + runway lights in frame.
     missionIndex = 3;
     const rw = badai.runway;
-    game.resetForMission(3, { x: rw.x - 2200, y: rw.y + 1300, heading: 70, altitude: 900, speed: 110, throttle: 0.6, fuel: 58, cargo: 1 });
+    game.resetForMission(3, { x: 4464, y: 3400, heading: 70, altitude: 700, speed: 105, throttle: 0.6, fuel: 58, cargo: 1 });
     target = { x: rw.x, y: rw.y };
-    steps = 60 * 5;
-    targetAlt = 700; targetSpeed = 105;
+    steps = 60 * 1.5;
+    targetAlt = 650; targetSpeed = 105;
   } else {
     return false;
   }

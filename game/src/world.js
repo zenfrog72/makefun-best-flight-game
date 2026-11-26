@@ -50,7 +50,7 @@ export function buildWorld(seed) {
   for (let i = 0; i < 34; i++) {
     clouds.push({
       x: range(rng, 0, WORLD_W), y: range(rng, 0, WORLD_H),
-      s: range(rng, 90, 260), speed: range(rng, 4, 14), layer: i % 3,
+      s: range(rng, 60, 150), speed: range(rng, 4, 14), layer: i % 3,
     });
   }
 
